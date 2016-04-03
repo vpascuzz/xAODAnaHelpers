@@ -127,16 +127,17 @@ namespace HelperClasses {
     @rst
         The :cpp:class:`HelperClasses::InfoSwitch` struct for Event Information.
 
-        ================ ============== =======
-        Parameter        Pattern        Match
-        ================ ============== =======
-        m_eventCleaning  eventCleaning  exact
-        m_pileup         pileup         exact
-        m_shapeEM        shapeEM        exact
-        m_shapeLC        shapeLC        exact
-        m_truth          truth          exact
-        m_caloClus       caloClusters   exact
-        ================ ============== =======
+        ================ ================ =======
+        Parameter        Pattern          Match
+        ================ ================ =======
+        m_eventCleaning  eventCleaning    exact
+        m_pileup         pileup           exact
+        m_shapeEM        shapeEM          exact
+        m_shapeLC        shapeLC          exact
+        m_truth          truth            exact
+        m_caloClus       caloClusters     exact
+        m_caloClusAll    caloClustersAll  exact
+        ================ ================ =======
     @endrst
    */
   class EventInfoSwitch : public InfoSwitch {
@@ -147,6 +148,7 @@ namespace HelperClasses {
     bool m_shapeLC;
     bool m_truth;
     bool m_caloClus;
+    bool m_caloClusAll;
     EventInfoSwitch(const std::string configStr) : InfoSwitch(configStr) { initialize(); };
   protected:
     void initialize();

@@ -178,7 +178,7 @@ void HelpTreeBase::AddEvent( const std::string detailStr ) {
     m_tree->Branch("xf2",               &m_xf2,           "xf2/F");
   }
 
-  if ( m_eventInfoSwitch->m_caloClus ) {
+  if ( m_eventInfoSwitch->m_caloClus || m_eventInfoSwitch->m_caloClusAll ) {
     m_tree->Branch("caloCluster_pt",  &m_caloCluster_pt);
     m_tree->Branch("caloCluster_phi", &m_caloCluster_phi);
     m_tree->Branch("caloCluster_eta", &m_caloCluster_eta);
@@ -271,12 +271,13 @@ void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*
     }
   }
 
-  if( m_eventInfoSwitch->m_caloClus && m_event ) {
+  if( (m_eventInfoSwitch->m_caloClus || m_eventInfoSwitch->m_caloClusAll) && m_event ) {
+    float ptCut = m_eventInfoSwitch->m_caloClusAll ? -10000. : 2000.;
     const xAOD::CaloClusterContainer* caloClusters = 0;
     HelperFunctions::retrieve( caloClusters, "CaloCalTopoClusters", m_event, 0);
     // save the clusters at the EM scale
     for( auto clus : * caloClusters ) {
-      if ( clus->pt ( xAOD::CaloCluster::State::UNCALIBRATED ) < 2000 ) { continue; } // 2 GeV cut
+      if ( clus->pt ( xAOD::CaloCluster::State::UNCALIBRATED ) < ptCut ) { continue; } // 2 GeV cut
       m_caloCluster_pt. push_back( clus->pt ( xAOD::CaloCluster::State::UNCALIBRATED ) / m_units );
       m_caloCluster_eta.push_back( clus->eta( xAOD::CaloCluster::State::UNCALIBRATED ) );
       m_caloCluster_phi.push_back( clus->phi( xAOD::CaloCluster::State::UNCALIBRATED ) );
