@@ -24,11 +24,14 @@ class ClusterHists : public HistogramManager
     // Histograms
     TH1F* m_ccl_n; //!
     TH1F* m_ccl_e; //!
+    TH1F* m_ccl_pt; //!
     TH1F* m_ccl_eta; //!
     TH1F* m_ccl_phi; //!
     TH2F* m_ccl_eta_vs_phi; //!
     TH2F* m_ccl_e_vs_eta; //!
     TH2F* m_ccl_e_vs_phi; //!
+    TH2F* m_ccl_pt_vs_eta; //!
+    TH2F* m_ccl_pt_vs_phi; //!
 };
 
 

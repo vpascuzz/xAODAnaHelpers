@@ -38,7 +38,7 @@ EL::StatusCode ClusterHistsAlgo :: histInitialize ()
   Info("histInitialize()", "%s", m_name.c_str() );
   RETURN_CHECK("xAH::Algorithm::algInitialize()", xAH::Algorithm::algInitialize(), "");
   // needed here and not in initalize since this is called first
-  if( m_inContainerName.empty() || m_detailStr.empty() ){
+  if( m_inContainerName.empty() ){
     Error("histInitialize()", "One or more required configuration values are empty");
     return EL::StatusCode::FAILURE;
   }
