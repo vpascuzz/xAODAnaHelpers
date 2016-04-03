@@ -15,8 +15,8 @@ StatusCode ClusterHists::initialize() {
 
   // These plots are always made
   m_ccl_n   = book(m_name, "n", "cluster multiplicity", 80, 0, 800);
-  m_ccl_e   = book(m_name, "e", "cluster e [GeV]", 400, -50, 350);
-  m_ccl_pt  = book(m_name, "pt", "cluster pt [GeV]", 400, -50, 350);
+  m_ccl_e   = book(m_name, "e", "cluster e [GeV]", 300, -200, 1000);
+  m_ccl_pt  = book(m_name, "pt", "cluster pt [GeV]", 300, -200, 1000);
   m_ccl_eta = book(m_name, "eta", "cluster #eta", 80, -4, 4);
   m_ccl_phi = book(m_name, "phi", "cluster #phi", 120, -TMath::Pi(), TMath::Pi());
 
