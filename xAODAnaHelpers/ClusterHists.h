@@ -32,6 +32,19 @@ class ClusterHists : public HistogramManager
     TH2F* m_ccl_e_vs_phi; //!
     TH2F* m_ccl_pt_vs_eta; //!
     TH2F* m_ccl_pt_vs_phi; //!
+
+
+
+    TH1F* m_ccl_e_0_0p8;
+    TH1F* m_ccl_pt_0_0p8;
+    TH1F* m_ccl_e_0_1p7;
+    TH1F* m_ccl_pt_0_1p7;
+    TH1F* m_ccl_e_1p7_5;
+    TH1F* m_ccl_pt_1p7_5;
+    TH1F* m_ccl_e_2p5_5;
+    TH1F* m_ccl_pt_2p5_5;
+    TH1F* m_ccl_e_3p5_5;
+    TH1F* m_ccl_pt_3p5_5;
 };
 
 

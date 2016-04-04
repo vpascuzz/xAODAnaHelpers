@@ -27,6 +27,21 @@ StatusCode ClusterHists::initialize() {
   m_ccl_pt_vs_eta   = book(m_name, "pt_vs_eta", "cluster #eta", 80, -4, 4, "cluster pt [GeV]", 300, -5, 45);
   m_ccl_pt_vs_phi   = book(m_name, "pt_vs_phi", "cluster #phi", 120, -TMath::Pi(), TMath::Pi(), "cluster pt [GeV]", 300, -5, 45);
 
+
+  if(m_detailStr.find("eta") != std::string::npos){
+    m_ccl_e_0_0p8   = book(m_name, "e_0_0p8", "cluster e [GeV]", 300, -200, 1000);
+    m_ccl_pt_0_0p8  = book(m_name, "pt_0_0p8", "cluster pt [GeV]", 300, -200, 1000);
+    m_ccl_e_0_1p7   = book(m_name, "e_0_1p7", "cluster e [GeV]", 300, -200, 1000);
+    m_ccl_pt_0_1p7  = book(m_name, "pt_0_1p7", "cluster pt [GeV]", 300, -200, 1000);
+    m_ccl_e_1p7_5   = book(m_name, "e_1p7_5", "cluster e [GeV]", 300, -200, 1000);
+    m_ccl_pt_1p7_5  = book(m_name, "pt_1p7_5", "cluster pt [GeV]", 300, -200, 1000);
+    m_ccl_e_2p5_5   = book(m_name, "e_2p5_5", "cluster e [GeV]", 300, -200, 1000);
+    m_ccl_pt_2p5_5  = book(m_name, "pt_2p5_5", "cluster pt [GeV]", 300, -200, 1000);
+    m_ccl_e_3p5_5   = book(m_name, "e_3p5_5", "cluster e [GeV]", 300, -200, 1000);
+    m_ccl_pt_3p5_5  = book(m_name, "pt_3p5_5", "cluster pt [GeV]", 300, -200, 1000);
+  }
+
+
   // if worker is passed to the class add histograms to the output
   return StatusCode::SUCCESS;
 }
@@ -63,6 +78,30 @@ StatusCode ClusterHists::execute( const xAOD::CaloCluster* ccl, float eventWeigh
   m_ccl_pt_vs_eta  -> Fill( cclEta, cclPt,   eventWeight );
   m_ccl_pt_vs_phi  -> Fill( cclPhi, cclPt,   eventWeight );
   
+
+  if(m_detailStr.find("eta") != std::string::npos){
+    if(fabs(cclEta) < 0.8){
+      m_ccl_e_0_0p8          -> Fill( cclE,   eventWeight );
+      m_ccl_pt_0_0p8         -> Fill( cclPt,  eventWeight );
+    }
+    if(fabs(cclEta) < 1.7){
+      m_ccl_e_0_1p7          -> Fill( cclE,   eventWeight );
+      m_ccl_pt_0_1p7         -> Fill( cclPt,  eventWeight );
+    }
+    if(fabs(cclEta) > 1.7){
+      m_ccl_e_1p7_5          -> Fill( cclE,   eventWeight );
+      m_ccl_pt_1p7_5         -> Fill( cclPt,  eventWeight );
+    }
+    if(fabs(cclEta) > 2.5){
+      m_ccl_e_2p5_5          -> Fill( cclE,   eventWeight );
+      m_ccl_pt_2p5_5         -> Fill( cclPt,  eventWeight );
+    }
+    if(fabs(cclEta) > 3.5){
+      m_ccl_e_3p5_5          -> Fill( cclE,   eventWeight );
+      m_ccl_pt_3p5_5         -> Fill( cclPt,  eventWeight );
+    }
+  }
+
   return StatusCode::SUCCESS;
 
 }
