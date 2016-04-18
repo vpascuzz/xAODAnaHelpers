@@ -65,6 +65,11 @@ class JetHists : public IParticleHists
     TH1F* m_FCAL1;                  //!
     TH1F* m_FCAL2;                  //!
 
+    //tracking
+    TH1F* m_nTrkPV1000; //!
+    TH1F* m_trkWidthPV1000; //!
+
+
     // area
     TH1F* m_actArea;                //!
 

@@ -304,6 +304,11 @@ StatusCode JetHists::initialize() {
     m_tracksInJet -> initialize( );
   }
 
+  if( m_infoSwitch->m_trackPV ){
+    m_nTrkPV1000      = book(m_name, "nTrkPV1000", "nTrkPV1000", 100, -0.5, 99.5);
+    m_trkWidthPV1000  = book(m_name, "trkWidthPV1000", "trkWidthPV1000", 100, 0., 1.);
+  }
+
   return StatusCode::SUCCESS;
 }
 
@@ -1162,6 +1167,15 @@ StatusCode JetHists::execute( const xAOD::IParticle* particle, float eventWeight
     for(auto& trkPtr: matchedTracks){
       RETURN_CHECK("JetHists::execute()", m_tracksInJet->execute(trkPtr, jet, pvx, eventWeight), "");
     }
+  }
+
+  if(m_infoSwitch->m_trackPV){
+    static SG::AuxElement::ConstAccessor<vector<float> > TrackWidthPt1000("TrackWidthPt1000");
+    static SG::AuxElement::ConstAccessor<vector<int> >  NumTrkPt1000("NumTrkPt1000");
+
+
+    m_nTrkPV1000->Fill( NumTrkPt1000(*jet)[0], eventWeight );
+    m_trkWidthPV1000->Fill ( TrackWidthPt1000(*jet)[0], eventWeight );
   }
 
   if(m_debug) std::cout << "JetHists: leave " <<std::endl;
