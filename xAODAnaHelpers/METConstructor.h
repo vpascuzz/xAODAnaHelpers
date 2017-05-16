@@ -94,9 +94,6 @@ public:
 private:
   bool m_isMC; //!
 
-  xAOD::TEvent *m_event;  //!
-  xAOD::TStore *m_store;  //!
-
   // tools
   asg::AnaToolHandle<IMETMaker> m_metmaker_handle; //!
 

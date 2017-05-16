@@ -90,9 +90,6 @@ public:
 
 private:
 
-  xAOD::TEvent *m_event;  //!
-  xAOD::TStore *m_store;  //!
-
   bool m_isMC;            //!
 
   int m_numEvent;         //!
