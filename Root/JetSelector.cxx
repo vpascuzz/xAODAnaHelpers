@@ -513,16 +513,14 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
     //
     if ( m_JVT_tool_handle.isInitialized() ) {
 
+      std::string sfName = "";
       for ( const auto& syst_it : m_systListJVT ) {
 
         // Create the name of the SF weight to be recorded
         //   template:  SYSNAME_JVTEff_SF
         //
-        std::string sfName = "JVTEff_SF_" + m_WorkingPointJVT;;
-        if ( !syst_it.name().empty() ) {
-           std::string prepend = syst_it.name() + "_";
-           sfName.insert( 0, prepend );
-        }
+        sfName = "JVTEff_SF_" + m_WorkingPointJVT;
+        if ( !syst_it.name().empty() ) sfName = syst_it.name() + "_" + sfName;
         ANA_MSG_DEBUG("JVT SF sys name (to be recorded in xAOD::TStore) is: " << sfName);
         sysVariationNamesJVT->push_back(sfName);
 
