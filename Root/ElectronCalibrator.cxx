@@ -165,6 +165,7 @@ EL::StatusCode ElectronCalibrator :: initialize ()
     }
   }
   ANA_CHECK( m_EgammaCalibrationAndSmearingTool_handle.retrieve());
+  ANA_MSG_DEBUG("Retrieved tool: " << m_EgammaCalibrationAndSmearingTool_handle);
 
   // Get a list of recommended systematics for this tool
   //
@@ -200,6 +201,7 @@ EL::StatusCode ElectronCalibrator :: initialize ()
   ANA_CHECK( m_isolationCorrectionTool_handle.setProperty("IsMC", m_isMC ));
   ANA_CHECK( m_isolationCorrectionTool_handle.setProperty("OutputLevel", msg().level() ));
   ANA_CHECK( m_isolationCorrectionTool_handle.retrieve());
+  ANA_MSG_DEBUG("Retrieved tool: " << m_isolationCorrectionTool_handle);
 
   // ***********************************************************
 
