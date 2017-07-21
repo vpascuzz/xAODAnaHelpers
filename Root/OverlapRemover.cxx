@@ -193,7 +193,7 @@ EL::StatusCode OverlapRemover :: execute ()
   // --------------------------------------------------------------------------------------------
   //
   // always run the nominal case
-  executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, NOMINAL);
+  executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus);
 
   // look what do we have in TStore
   if(msgLvl(MSG::VERBOSE)) m_store->print();
@@ -218,7 +218,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_el, m_inputAlgoElectrons, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_el) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  ELSYST, systNames_el);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  ELSYST, *systNames_el);
     }
 
   }
@@ -238,7 +238,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_mu, m_inputAlgoMuons, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_mu) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  MUSYST, systNames_mu);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  MUSYST, *systNames_mu);
     }
 
   }
@@ -258,7 +258,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_jet, m_inputAlgoJets, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_jet) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  JETSYST, systNames_jet);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  JETSYST, *systNames_jet);
     }
 
   }
@@ -277,7 +277,7 @@ EL::StatusCode OverlapRemover :: execute ()
     std::vector<std::string>* systNames_photon;
     ANA_CHECK( HelperFunctions::retrieve(systNames_photon, m_inputAlgoPhotons, 0, m_store, msg()) );
 
-    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  PHSYST, systNames_photon);
+    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  PHSYST, *systNames_photon);
 
   }
 
@@ -295,7 +295,7 @@ EL::StatusCode OverlapRemover :: execute ()
     std::vector<std::string>* systNames_tau;
     ANA_CHECK( HelperFunctions::retrieve(systNames_tau, m_inputAlgoTaus, 0, m_store, msg()) );
 
-    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, TAUSYST, systNames_tau);
+    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, TAUSYST, *systNames_tau);
 
   }
 
@@ -431,10 +431,17 @@ EL::StatusCode OverlapRemover :: fillObjectCutflow (const xAOD::IParticleContain
 
 }
 
+// a nice override to handle nominal cases simply
+EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inElectrons, const xAOD::MuonContainer* inMuons, const xAOD::JetContainer* inJets,
+               const xAOD::PhotonContainer* inPhotons,   const xAOD::TauJetContainer* inTaus)
+{
+  std::vector<std::string> nominalVec{""};
+  return executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, NOMINAL, nominalVec);
+}
 
 EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inElectrons, const xAOD::MuonContainer* inMuons, const xAOD::JetContainer* inJets,
                const xAOD::PhotonContainer* inPhotons,   const xAOD::TauJetContainer* inTaus,
-               SystType syst_type, std::vector<std::string>* sysVec)
+               SystType syst_type, const std::vector<std::string>& sysVec)
 {
 
   // instantiate output container(s)
@@ -445,665 +452,171 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
   ConstDataVector<xAOD::PhotonContainer>   *selectedPhotons (nullptr);
   ConstDataVector<xAOD::TauJetContainer>   *selectedTaus  (nullptr);
 
-  // make a switch for systematics types
-  //
-  switch ( static_cast<int>(syst_type) )
-  {
 
-    case NOMINAL:  // this is the nominal case
-    {
-      ANA_MSG_DEBUG("Doing nominal case");
-      bool nomContainerNotFound(false);
-
-      if( m_useElectrons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
+  // get a nice name for the current syst_type for warning
+  std::string syst_type_name = "nominal";
+  switch ( static_cast<int>(syst_type) ) {
+    case NOMINAL:   syst_type_name = "nominal"; break;
+    case ELSYST:    syst_type_name = "electron"; break;
+    case MUSYST:    syst_type_name = "muon"; break;
+    case JETSYST:   syst_type_name = "jet"; break;
+    case PHSYST:    syst_type_name = "photon"; break;
+    case TAUSYST:   syst_type_name = "tau"; break;
+    default:
+      {
+        ANA_MSG_ERROR("Unknown systematics type. Aborting");
+        return EL::StatusCode::FAILURE;
       }
-
-      if( m_useMuons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
-        ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
-      } else {
-        nomContainerNotFound = true;
-        if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-      }
-
-      if ( m_usePhotons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_useTaus ) {
-        if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-      if ( m_useElectrons ) { ANA_MSG_DEBUG(  "inElectrons : " << inElectrons->size()); }
-      if ( m_useMuons )     { ANA_MSG_DEBUG(  "inMuons : " << inMuons->size()); }
-      ANA_MSG_DEBUG(  "inJets : " << inJets->size() );
-      if ( m_usePhotons )   { ANA_MSG_DEBUG(  "inPhotons : " << inPhotons->size());  }
-      if ( m_useTaus    )   { ANA_MSG_DEBUG(  "inTaus : " << inTaus->size());  }
-
-      // do the actual OR
-      //
-      ANA_MSG_DEBUG(  "Calling removeOverlaps()");
-      ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-      ANA_MSG_DEBUG(  "Done Calling removeOverlaps()");
-
-      std::string ORdecor("passOR");
-      if(m_useCutFlow){
-        // fill cutflow histograms
-        //
-        ANA_MSG_DEBUG(  "Filling Cut Flow Histograms");
-        if ( m_useElectrons ) fillObjectCutflow(inElectrons);
-        if ( m_useMuons )     fillObjectCutflow(inMuons);
-        fillObjectCutflow(inJets);
-        if ( m_usePhotons )   fillObjectCutflow(inPhotons);
-        if ( m_useTaus )      fillObjectCutflow(inTaus);
-      }
-
-      // make a copy of input container(s) with selected objects
-      //
-      if ( m_createSelectedContainers ) {
-        ANA_MSG_DEBUG(  "Creating selected Containers");
-        if( m_useElectrons ) selectedElectrons  = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-        if( m_useMuons )     selectedMuons      = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-        selectedJets      = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-        if ( m_usePhotons )  selectedPhotons  = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-        if ( m_useTaus )     selectedTaus = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-      }
-
-      // resize containers basd on OR decision:
-      //
-      // if an object has been flagged as 'passOR', it will be stored in the 'selected' container
-      //
-      ANA_MSG_DEBUG(  "Resizing");
-      if ( m_useElectrons ) { ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-      if ( m_useMuons )     { ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-      ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-      if ( m_usePhotons )   { ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-      if ( m_useTaus )      { ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-
-      if ( m_useElectrons) { ANA_MSG_DEBUG(  "selectedElectrons : " << selectedElectrons->size()); }
-      if ( m_useMuons )    { ANA_MSG_DEBUG(  "selectedMuons : " << selectedMuons->size()); }
-      ANA_MSG_DEBUG(  "selectedJets : " << selectedJets->size());
-      if ( m_usePhotons )  { ANA_MSG_DEBUG(  "selectedPhotons : " << selectedPhotons->size()); }
-      if ( m_useTaus )     { ANA_MSG_DEBUG(  "selectedTaus : " << selectedTaus->size() ); }
-
-      // add ConstDataVector to TStore
-      //
-      if ( m_createSelectedContainers ) {
-        ANA_MSG_DEBUG(  "Recording");
-        if ( m_useElectrons ){ ANA_CHECK( m_store->record( selectedElectrons,   m_outContainerName_Electrons )); }
-        if ( m_useMuons )    { ANA_CHECK( m_store->record( selectedMuons,  m_outContainerName_Muons )); }
-        ANA_CHECK( m_store->record( selectedJets,  m_outContainerName_Jets ));
-        if ( m_usePhotons )  { ANA_CHECK( m_store->record( selectedPhotons, m_outContainerName_Photons )); }
-        if ( m_useTaus )     { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus )); }
-      }
-
-      m_vecOutContainerNames->push_back("");
       break;
+  }
+
+  // debugging purposes
+  ANA_MSG_DEBUG("Doing " << syst_type_name << " systematics");
+  if(syst_type != NOMINAL){
+    ANA_MSG_DEBUG("will consider the following systematics:");
+    for (const auto& systName : sysVec ){ ANA_MSG_DEBUG("\t " << systName); }
+  }
+
+  // if any of the nominal containers are not found for a given systematic type
+  //    we must just return success and warn that OR will not be done for that case
+  bool nomContainerNotFound(false);
+
+  // first, retrieve all nominal containers we need
+
+  if( m_useElectrons && syst_type != ELSYST ) {
+    if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
+      ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
+    } else {
+      nomContainerNotFound = true;
+      ANA_MSG_ERROR( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the " << syst_type_name << " systematic case...");
     }
-    case ELSYST : // electron syst
-    {
-      ANA_MSG_DEBUG(  "Doing  electron systematics");
-      bool nomContainerNotFound(false);
+  }
 
-      // just to check everything is fine
-      ANA_MSG_DEBUG("will consider the following ELECTRON systematics:" );
-      for ( auto it : *sysVec ){ ANA_MSG_DEBUG("\t " << it); }
-
-      // these input containers won't change in the electron syst loop ...
-      if( m_useMuons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
-      }
-
-      if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
-        ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
-      } else {
-        nomContainerNotFound = true;
-        if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-      }
-
-      if ( m_usePhotons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_useTaus ) {
-        if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-
-      for ( auto systName : *sysVec) {
-
-        if ( systName.empty() ) continue;
-
-        // ... instead, the electron input container will be different for each syst
-        //
-        std::string el_syst_cont_name = m_inContainerName_Electrons + systName;
-        ANA_CHECK( HelperFunctions::retrieve(inElectrons, el_syst_cont_name, 0, m_store, msg()) );
-
-        // do the actual OR
-        //
-        ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-
-        const std::string ORdecor("passOR");
-        if(m_useCutFlow){
-          // fill cutflow histograms
-          //
-          fillObjectCutflow(inElectrons);
-          if ( m_useMuons )   fillObjectCutflow(inMuons);
-          fillObjectCutflow(inJets);
-          if ( m_usePhotons ) fillObjectCutflow(inPhotons);
-          if ( m_useTaus )    fillObjectCutflow(inTaus);
-        }
-
-        // make a copy of input container(s) with selected objects
-        //
-        if ( m_createSelectedContainers ) {
-          selectedElectrons   = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useMuons )    selectedMuons  = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-          selectedJets        = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-          if ( m_usePhotons )  selectedPhotons  = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useTaus )     selectedTaus = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-        }
-
-        // resize containers basd on OR decision
-        //
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_useMuons )  {  ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_usePhotons ){ ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if ( m_useTaus )   {  ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-
-        // add ConstDataVector to TStore
-        //
-        if ( m_createSelectedContainers ) {
-          // a different syst varied container will be stored for each syst variation
-          ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName ));
-          if ( m_useMuons )  { ANA_CHECK( m_store->record( selectedMuons,     m_outContainerName_Muons + systName )); }
-          ANA_CHECK( m_store->record( selectedJets,      m_outContainerName_Jets + systName ));
-          if ( m_usePhotons ){ ANA_CHECK( m_store->record( selectedPhotons, m_outContainerName_Photons + systName )); }
-          if ( m_useTaus )   { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
-        }
-
-        m_vecOutContainerNames->push_back(systName);
-      } // close loop on systematic sets available from upstream algo (Electrons)
-
-      break;
+  if( m_useMuons && syst_type != MUSYST ) {
+    if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
+      ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
+    } else {
+      nomContainerNotFound = true;
+      ANA_MSG_ERROR( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the " << syst_type_name << " systematic case...");
     }
-    case MUSYST: // muon syst
-    {
-      ANA_MSG_DEBUG(  "Doing  muon systematics");
-      bool nomContainerNotFound(false);
+  }
 
-      // just to check everything is fine
-      ANA_MSG_DEBUG("will consider the following MUON systematics:" );
-      for ( auto it : *sysVec ){ ANA_MSG_DEBUG("\t " << it); }
-
-      // these input containers won't change in the muon syst loop ...
-      if( m_useElectrons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
-      }
-
-      if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
-        ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
-      } else {
-        nomContainerNotFound = true;
-        if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-      }
-
-      if ( m_usePhotons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_useTaus ) {
-        if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-
-      for ( auto systName : *sysVec) {
-
-        if ( systName.empty() ) continue;
-
-        // ... instead, the muon input container will be different for each syst
-        //
-        std::string mu_syst_cont_name = m_inContainerName_Muons + systName;
-        ANA_CHECK( HelperFunctions::retrieve(inMuons, mu_syst_cont_name, 0, m_store, msg()) );
-
-        // do the actual OR
-        //
-        ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-
-        const std::string ORdecor("passOR");
-        if(m_useCutFlow){
-          // fill cutflow histograms
-          //
-          if ( m_useElectrons ) fillObjectCutflow(inElectrons);
-          fillObjectCutflow(inMuons);
-          fillObjectCutflow(inJets);
-          if( m_usePhotons )    fillObjectCutflow(inPhotons);
-          if( m_useTaus )       fillObjectCutflow(inTaus);
-        }
-        // make a copy of input container(s) with selected objects
-        //
-        if ( m_createSelectedContainers ) {
-          if ( m_useElectrons ) selectedElectrons   = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-          selectedMuons       = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-          selectedJets        = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-          if ( m_usePhotons )   selectedPhotons = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useTaus )      selectedTaus  = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-        }
-
-        // resize containers based on OR decision
-        //
-        if ( m_useElectrons ) { ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_usePhotons )   { ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if ( m_useTaus )      { ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-
-        // add ConstDataVector to TStore
-        //
-        if ( m_createSelectedContainers ) {
-          // a different syst varied container will be stored for each syst variation
-          //
-          if ( m_useElectrons ) { ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName )); }
-          ANA_CHECK( m_store->record( selectedMuons,     m_outContainerName_Muons + systName ));
-          ANA_CHECK( m_store->record( selectedJets,      m_outContainerName_Jets + systName ));
-          if ( m_usePhotons )   { ANA_CHECK( m_store->record( selectedPhotons, m_outContainerName_Photons + systName )); }
-          if ( m_useTaus )      { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
-        }
-
-        m_vecOutContainerNames->push_back(systName);
-      } // close loop on systematic sets available from upstream algo (Muons)
-
-      break;
+  if( syst_type != JETSYST ){
+    if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
+      ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
+    } else {
+      nomContainerNotFound = true;
+      ANA_MSG_ERROR( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the " << syst_type_name << " systematic case...");
     }
-    case JETSYST: // jet systematics
-    {
-      ANA_MSG_DEBUG(  "Doing  jet systematics");
-      bool nomContainerNotFound(false);
+  }
 
-      // just to check everything is fine
-      ANA_MSG_DEBUG("will consider the following JET systematics:" );
-      for ( auto it : *sysVec ) { ANA_MSG_DEBUG("\t " << it);  }
-
-      // these input containers won't change in the jet syst loop ...
-      if( m_useElectrons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
-      }
-
-      if( m_useMuons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_usePhotons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_useTaus ) {
-        if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-      for( auto systName : *sysVec ) {
-
-        if ( systName.empty() ) continue;
-
-        // ... instead, the jet input container will be different for each syst
-        //
-        std::string jet_syst_cont_name = m_inContainerName_Jets + systName;
-        ANA_CHECK( HelperFunctions::retrieve(inJets, jet_syst_cont_name, 0, m_store, msg()) );
-
-        // do the actual OR
-        //
-        ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-
-        const std::string ORdecor("passOR");
-        if(m_useCutFlow){
-          // fill cutflow histograms
-          //
-          if ( m_useElectrons ) fillObjectCutflow(inElectrons);
-          if ( m_useMuons )     fillObjectCutflow(inMuons);
-          fillObjectCutflow(inJets);
-          if( m_usePhotons )    fillObjectCutflow(inPhotons);
-          if( m_useTaus )       fillObjectCutflow(inTaus);
-        }
-
-        // make a copy of input container(s) with selected objects
-        //
-        if ( m_createSelectedContainers ) {
-          if ( m_useElectrons ) selectedElectrons   = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useMuons )     selectedMuons      = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-          selectedJets       = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-          if ( m_usePhotons )   selectedPhotons  = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useTaus )      selectedTaus = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-        }
-
-        // resize containers basd on OR decision
-        //
-        if ( m_useElectrons ) { ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if ( m_useMuons )     { ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_usePhotons )   { ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if ( m_useTaus )      { ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-
-        // add ConstDataVector to TStore
-        //
-        if ( m_createSelectedContainers ) {
-          // a different syst varied container will be stored for each syst variation
-          //
-          if ( m_useElectrons ) { ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName )); }
-          if ( m_useMuons )   { ANA_CHECK( m_store->record( selectedMuons,     m_outContainerName_Muons + systName )); }
-          ANA_CHECK( m_store->record( selectedJets,      m_outContainerName_Jets + systName ));
-          if ( m_usePhotons )   { ANA_CHECK( m_store->record( selectedPhotons, m_outContainerName_Photons + systName )); }
-          if ( m_useTaus )      { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
-        }
-
-        m_vecOutContainerNames->push_back(systName);
-      } // close loop on systematic sets available from upstream algo (Jets)
-
-      break;
+  if ( m_usePhotons && syst_type != PHSYST ) {
+    if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
+      ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
+    } else {
+      nomContainerNotFound = true;
+      ANA_MSG_ERROR( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the " << syst_type_name << " systematic case...");
     }
-    case PHSYST : // photon systematics
-    {
-      ANA_MSG_DEBUG(  "Doing  photon systematics");
-      bool nomContainerNotFound(false);
+  }
 
-      // just to check everything is fine
-      ANA_MSG_DEBUG("will consider the following PHOTON systematics:" );
-      for ( auto it : *sysVec ) { ANA_MSG_DEBUG("\t " << it);  }
-
-      // these input containers won't change in the photon syst loop ...
-      if( m_useElectrons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
-      }
-
-      if( m_useMuons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
-        ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
-      } else {
-        nomContainerNotFound = true;
-        if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-      }
-
-      if ( m_useTaus ) {
-        if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-      for( auto systName : *sysVec ) {
-
-        if ( systName.empty() ) continue;
-
-        // ... instead, the photon input container will be different for each syst
-        //
-        std::string photon_syst_cont_name = m_inContainerName_Photons + systName;
-        ANA_CHECK( HelperFunctions::retrieve(inPhotons, photon_syst_cont_name, 0, m_store, msg()) );
-
-        // do the actual OR
-        //
-        ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-
-
-        const std::string ORdecor("passOR");
-        if(m_useCutFlow){
-          // fill cutflow histograms
-          //
-          if( m_useElectrons ) fillObjectCutflow(inElectrons);
-          if( m_useMuons     ) fillObjectCutflow(inMuons);
-          fillObjectCutflow(inJets);
-          fillObjectCutflow(inPhotons);
-          if( m_useTaus )      fillObjectCutflow(inTaus);
-        }
-
-        // make a copy of input container(s) with selected objects
-        //
-        if ( m_createSelectedContainers ) {
-          if( m_useElectrons ) selectedElectrons   = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-          if( m_useMuons     ) selectedMuons       = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-          selectedJets        = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-          selectedPhotons     = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-          if ( m_useTaus )     selectedTaus    = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-        }
-
-        // resize containers based on OR decision
-        //
-        if( m_useElectrons ) { ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if( m_useMuons )     { ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_useTaus )     { ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-
-        // add ConstDataVector to TStore
-        //
-        if ( m_createSelectedContainers ) {
-          // a different syst varied container will be stored for each syst variation
-          //
-          if( m_useElectrons ){ ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName )); }
-          if( m_useMuons )    { ANA_CHECK( m_store->record( selectedMuons,     m_outContainerName_Muons + systName )); }
-          ANA_CHECK( m_store->record( selectedJets,      m_outContainerName_Jets + systName ));
-          ANA_CHECK( m_store->record( selectedPhotons,   m_outContainerName_Photons + systName ));
-          if ( m_useTaus )    { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
-        }
-
-        m_vecOutContainerNames->push_back(systName);
-      } // close loop on systematic sets available from upstream algo (Photons)
-
-      break;
+  if ( m_useTaus && syst_type != TAUSYST ) {
+    if ( m_store->contains<ConstDataVector<xAOD::TauJetContainer> >(m_inContainerName_Taus) ) {
+      ANA_CHECK( HelperFunctions::retrieve(inTaus, m_inContainerName_Taus, m_event, m_store, msg()) );
+    } else {
+      nomContainerNotFound = true;
+      ANA_MSG_ERROR( "Could not find nominal container " << m_inContainerName_Taus << " in xAOD::TStore. Overlap Removal will not be done for the " << syst_type_name << " systematic case...");
     }
-    case TAUSYST : // tau systematics
-    {
-      ANA_MSG_DEBUG(  "Doing tau systematics");
-      bool nomContainerNotFound(false);
+  }
 
-      // just to check everything is fine
-      ANA_MSG_DEBUG("output vector already contains the following TAU systematics:" );
-      for ( auto it : *sysVec ) { ANA_MSG_DEBUG("\t " << it);  }
+  if( nomContainerNotFound ) { return EL::StatusCode::FAILURE; }
 
-      // these input containers won't change in the tau syst loop ...
-      if( m_useElectrons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::ElectronContainer> >(m_inContainerName_Electrons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inElectrons, m_inContainerName_Electrons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Electrons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case...");  }
-        }
-      }
+  bool doElectrons(m_useElectrons || syst_type == ELSYST);
+  bool doMuons(m_useMuons || syst_type == MUSYST);
+  //bool doJets(true); /// always do jets
+  bool doPhotons(m_usePhotons || syst_type == PHSYST);
+  bool doTaus(m_useTaus || syst_type == TAUSYST);
 
-      if( m_useMuons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::MuonContainer> >(m_inContainerName_Muons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inMuons, m_inContainerName_Muons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Muons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
+  for(const auto& systName: sysVec){
 
-      if ( m_store->contains<ConstDataVector<xAOD::JetContainer> >(m_inContainerName_Jets) ) {
-        ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName_Jets, m_event, m_store, msg()) );
-      } else {
-        nomContainerNotFound = true;
-        if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Jets << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-      }
+    // skip the empty case (we always run empty systematics in NOMINAL) except when in NOMINAL
+    // e.g. if we do electron systematics, we've already handled the nominal case for electrons in NOMINAL
+    if(systName.empty() && syst_type != NOMINAL) continue;
 
-      if ( m_usePhotons ) {
-        if ( m_store->contains<ConstDataVector<xAOD::PhotonContainer> >(m_inContainerName_Photons) ) {
-          ANA_CHECK( HelperFunctions::retrieve(inPhotons, m_inContainerName_Photons, m_event, m_store, msg()) );
-        } else {
-          nomContainerNotFound = true;
-          if ( m_numEvent == 1 ) { ANA_MSG_WARNING( "Could not find nominal container " << m_inContainerName_Photons << " in xAOD::TStore. Overlap Removal will not be done for the 'all-nominal' case..."); }
-        }
-      }
-
-      if ( nomContainerNotFound ) {return EL::StatusCode::SUCCESS;}
-
-      for( auto systName : *sysVec ) {
-
-        if ( systName.empty() ) continue;
-
-        // ... instead, the tau input container will be different for each syst
-        //
-        std::string tau_syst_cont_name = m_inContainerName_Taus + systName;
-        ANA_CHECK( HelperFunctions::retrieve(inTaus, tau_syst_cont_name, 0, m_store, msg()) );
-
-        // do the actual OR
-        //
-        ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
-
-        const std::string ORdecor("passOR");
-        if(m_useCutFlow){
-          // fill cutflow histograms
-          //
-          if( m_useElectrons ) fillObjectCutflow(inElectrons);
-          if( m_useMuons     ) fillObjectCutflow(inMuons);
-          fillObjectCutflow(inJets);
-          if( m_usePhotons ) fillObjectCutflow(inPhotons);
-          fillObjectCutflow(inTaus);
-        }
-
-        // make a copy of input container(s) with selected objects
-        //
-        if ( m_createSelectedContainers ) {
-          if( m_useElectrons ) selectedElectrons   = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
-          if( m_useMuons )     selectedMuons       = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
-          selectedJets       = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
-          if ( m_usePhotons )  selectedPhotons     = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
-          selectedTaus       = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
-        }
-
-        // resize containers based on OR decision
-        //
-        if( m_useElectrons ) { ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        if( m_useMuons )     { ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-        if ( m_usePhotons )  { ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
-        ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR));
-
-        // add ConstDataVector to TStore
-        //
-        if ( m_createSelectedContainers ) {
-          // a different syst varied container will be stored for each syst variation
-          //
-          if( m_useElectrons ) { ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName )); }
-          if( m_useMuons )     { ANA_CHECK( m_store->record( selectedMuons,     m_outContainerName_Muons + systName )); }
-          ANA_CHECK( m_store->record( selectedJets,      m_outContainerName_Jets + systName ));
-          if ( m_usePhotons )  { ANA_CHECK( m_store->record( selectedPhotons,   m_outContainerName_Photons + systName )); }
-          ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName ));
-        }
-
-        m_vecOutContainerNames->push_back(systName);
-      } // close loop on systematic sets available from upstream algo (Taus)
-
-      break;
+    // retrieve the systematic we're debugging
+    //   do nothing for nominal (above switch case breaks if one of the below values isn't used so default not needed)
+    switch ( static_cast<int>(syst_type) ) {
+      case ELSYST:    ANA_CHECK(HelperFunctions::retrieve(inElectrons,  m_inContainerName_Electrons + systName, 0, m_store, msg())); break;
+      case MUSYST:    ANA_CHECK(HelperFunctions::retrieve(inMuons,      m_inContainerName_Muons + systName,     0, m_store, msg())); break;
+      case JETSYST:   ANA_CHECK(HelperFunctions::retrieve(inJets,       m_inContainerName_Jets + systName,      0, m_store, msg())); break;
+      case PHSYST:    ANA_CHECK(HelperFunctions::retrieve(inPhotons,    m_inContainerName_Photons + systName,   0, m_store, msg())); break;
+      case TAUSYST:   ANA_CHECK(HelperFunctions::retrieve(inTaus,       m_inContainerName_Taus + systName,      0, m_store, msg())); break;
     }
-    default :
-    {
-      ANA_MSG_ERROR("Unknown systematics type. Aborting");
-      return EL::StatusCode::FAILURE;
-    }
-  } // end of switch
 
+    // debug
+    ANA_MSG_DEBUG("Container sizes before OR:");
+    if(doElectrons) { ANA_MSG_DEBUG("\tinElectrons : " << inElectrons->size()); }
+    if(doMuons)     { ANA_MSG_DEBUG("\tinMuons : " << inMuons->size()); }
+    ANA_MSG_DEBUG("inJets : " << inJets->size() );
+    if(doPhotons)   { ANA_MSG_DEBUG("\tinPhotons : " << inPhotons->size());  }
+    if(doTaus)      { ANA_MSG_DEBUG("\tinTaus : " << inTaus->size());  }
+
+    // do the actual OR
+    ANA_MSG_DEBUG("Calling removeOverlaps()");
+    ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
+    ANA_MSG_DEBUG("Done Calling removeOverlaps()");
+
+    std::string ORdecor("passOR");
+    if(m_useCutFlow){
+      // fill cutflow histograms (always fill the object cutflow for that objects' systematics)
+      ANA_MSG_DEBUG("Filling Cut Flow Histograms");
+      if(doElectrons) fillObjectCutflow(inElectrons);
+      if(doMuons)     fillObjectCutflow(inMuons);
+      fillObjectCutflow(inJets);
+      if(doPhotons)   fillObjectCutflow(inPhotons);
+      if(doTaus)      fillObjectCutflow(inTaus);
+    }
+
+    // make a copy of input container(s) with selected objects
+    if ( m_createSelectedContainers ) {
+      // a different syst varied container will be created/stored for each syst variation
+      ANA_MSG_DEBUG("Creating selected Containers");
+      if(doElectrons) selectedElectrons  = new ConstDataVector<xAOD::ElectronContainer>(SG::VIEW_ELEMENTS);
+      if(doMuons)     selectedMuons      = new ConstDataVector<xAOD::MuonContainer>(SG::VIEW_ELEMENTS);
+      selectedJets       = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
+      if(doPhotons)   selectedPhotons  = new ConstDataVector<xAOD::PhotonContainer>(SG::VIEW_ELEMENTS);
+      if(doTaus)      selectedTaus = new ConstDataVector<xAOD::TauJetContainer>(SG::VIEW_ELEMENTS);
+
+      ANA_MSG_DEBUG("Recording");
+      if(doElectrons){ ANA_CHECK( m_store->record( selectedElectrons, m_outContainerName_Electrons + systName )); }
+      if(doMuons)    { ANA_CHECK( m_store->record( selectedMuons, m_outContainerName_Muons + systName )); }
+      ANA_CHECK(m_store->record( selectedJets,  m_outContainerName_Jets + systName ));
+      if(doPhotons)  { ANA_CHECK( m_store->record( selectedPhotons, m_outContainerName_Photons + systName )); }
+      if(doTaus)     { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
+    }
+
+    // resize containers basd on OR decision:
+    //   if an object has been flagged as 'passOR', it will be stored in the 'selected' container
+    ANA_MSG_DEBUG("Resizing");
+    if(doElectrons){ ANA_CHECK( HelperFunctions::makeSubsetCont(inElectrons, selectedElectrons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
+    if(doMuons)    { ANA_CHECK( HelperFunctions::makeSubsetCont(inMuons, selectedMuons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
+    ANA_CHECK( HelperFunctions::makeSubsetCont(inJets, selectedJets, msg(), ORdecor.c_str(), ToolName::SELECTOR));
+    if(doPhotons)  { ANA_CHECK( HelperFunctions::makeSubsetCont(inPhotons, selectedPhotons, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
+    if(doTaus)     { ANA_CHECK( HelperFunctions::makeSubsetCont(inTaus, selectedTaus, msg(), ORdecor.c_str(), ToolName::SELECTOR)); }
+
+    // debug
+    ANA_MSG_DEBUG("Container sizes after OR");
+    if(doElectrons){ ANA_MSG_DEBUG("\tselectedElectrons : " << selectedElectrons->size()); }
+    if(doMuons)    { ANA_MSG_DEBUG("\tselectedMuons : " << selectedMuons->size()); }
+    ANA_MSG_DEBUG("selectedJets : " << selectedJets->size());
+    if(doPhotons)  { ANA_MSG_DEBUG("\tselectedPhotons : " << selectedPhotons->size()); }
+    if(doTaus)     { ANA_MSG_DEBUG("\tselectedTaus : " << selectedTaus->size() ); }
+
+    // for nominal, we push out the ""
+    // for systematic, we push out the systematic name
+    m_vecOutContainerNames->push_back(systName);
+  } // end of loop over systematics
 
   return EL::StatusCode::SUCCESS;
-
 }
 
 EL::StatusCode OverlapRemover :: setCutFlowHist( )

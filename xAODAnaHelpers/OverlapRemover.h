@@ -274,13 +274,28 @@ public:
      @param syst_type      The type of object for which input systematics should be considered. Default is `NOMINAL`
      @param sysVec         The list of the input systematics for a given object. Must match with the choice of `syst_type`. Default is `nullptr`
   */
-  virtual EL::StatusCode executeOR( const xAOD::ElectronContainer* inElectrons,
-				    const xAOD::MuonContainer* inMuons,
-				    const xAOD::JetContainer* inJets,
-				    const xAOD::PhotonContainer* inPhotons,
-				    const xAOD::TauJetContainer* inTaus,
-				    SystType syst_type = NOMINAL,
-				    std::vector<std::string>* sysVec = nullptr);
+  virtual EL::StatusCode executeOR(const xAOD::ElectronContainer* inElectrons,
+                                   const xAOD::MuonContainer* inMuons,
+                                   const xAOD::JetContainer* inJets,
+                                   const xAOD::PhotonContainer* inPhotons,
+                                   const xAOD::TauJetContainer* inTaus,
+                                   SystType syst_type,
+                                   const std::vector<std::string>& sysVec);
+
+  /**
+     @brief Function that internally calls the OLR tool for the input containers for nominal case
+     @param inElectrons    Input `xAOD` container for electrons
+     @param inMuons        Input `xAOD` container for muons
+     @param inJets         Input `xAOD` container for jets
+     @param inPhotons      Input `xAOD` container for photons
+     @param inTaus         Input `xAOD` container for taus
+  */
+  virtual EL::StatusCode executeOR(const xAOD::ElectronContainer* inElectrons,
+                                   const xAOD::MuonContainer* inMuons,
+                                   const xAOD::JetContainer* inJets,
+                                   const xAOD::PhotonContainer* inPhotons,
+                                   const xAOD::TauJetContainer* inTaus);
+
 
   /** @brief Setup cutflow histograms */
   EL::StatusCode setCutFlowHist();
