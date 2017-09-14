@@ -69,6 +69,7 @@ xAH_logger = logging.getLogger("xAH")
 import argparse
 import os
 from rucioMakeList import rucioMakeList
+import random
 import subprocess
 import sys
 import datetime
@@ -422,9 +423,10 @@ if __name__ == "__main__":
           sh_all.get(sname).meta().setDouble(ROOT.SH.MetaFields.filterEfficiency,filteff)
           sh_all.get(sname).meta().setDouble(ROOT.SH.MetaFields.numEvents       ,nEvents)
       elif args.use_rucioMakeList:
-        tempfname = "temp.txt"
-        rucioMakeList(fname)
+        tempfname = fname+str(random.random())+"temp.txt"
+        rucioMakeList(fname,tempfname)
         ROOT.SH.readFileList(sh_all,fname,tempfname)
+        os.system("rm "+tempfname)
       else:
 
         if args.use_scanDQ2:
