@@ -68,6 +68,7 @@ xAH_logger = logging.getLogger("xAH")
 
 import argparse
 import os
+from rucioMakeList import rucioMakeList
 import subprocess
 import sys
 import datetime
@@ -141,6 +142,7 @@ parser.add_argument('--isAFII',   action="store_true", dest="is_AFII",  default=
 parser.add_argument('--extraOptions', dest="extra_options", metavar="[param=val]", type=str, required=False, help='Pass in extra options straight into the python config file. These can be accessed by using argparse: `parser.parse_args(shlex.split(args.extra_options))`.', default='')
 
 parser.add_argument('--inputList', dest='use_inputFileList', action='store_true', help='If enabled, will read in a text file containing a list of paths/filenames.')
+parser.add_argument('--rucioMakeList', dest='use_rucioMakeList', action='store_true', help='If enabled, will make a text file with a list of replicas on MWT2')
 parser.add_argument('--inputTag', dest='inputTag', default="", help='A wildcarded name of input files to run on.')
 parser.add_argument('--inputDQ2', dest='use_scanDQ2', action='store_true', help='[DEPRECATION] Use inputRucio instead.')
 parser.add_argument('--inputRucio', dest='use_scanRucio', action='store_true', help='If enabled, will search using Rucio. Can be combined with `--inputList`.')
@@ -361,6 +363,8 @@ if __name__ == "__main__":
         xAH_logger.info("\t\tAdding samples using scanEOS")
       else:
         xAH_logger.info("\t\tAdding using readFileList")
+    elif args.use_rucioMakeList:
+      xAH_logger.info("\t\tMaking file list using rucio list-file-replicas --protocol root")
     else:
       if args.use_scanDQ2:
         xAH_logger.info("\t\tAdding samples using scanDQ2")
@@ -417,6 +421,10 @@ if __name__ == "__main__":
           sh_all.get(sname).meta().setDouble(ROOT.SH.MetaFields.crossSection    ,xsec)
           sh_all.get(sname).meta().setDouble(ROOT.SH.MetaFields.filterEfficiency,filteff)
           sh_all.get(sname).meta().setDouble(ROOT.SH.MetaFields.numEvents       ,nEvents)
+      elif args.use_rucioMakeList:
+        tempfname = "temp.txt"
+        rucioMakeList(fname)
+        ROOT.SH.readFileList(sh_all,fname,tempfname)
       else:
 
         if args.use_scanDQ2:
@@ -461,6 +469,7 @@ if __name__ == "__main__":
     # read susy meta data (should be configurable)
     xAH_logger.info("reading all metadata in $ROOTCOREBIN/data/xAODAnaHelpers/metadata")
     ROOT.SH.readSusyMetaDir(sh_all,"$ROOTCOREBIN/data/xAODAnaHelpers/metadata")
+    xAH_logger.info("ROOT.SH.MetaFields.crossSection == "+str(ROOT.SH.MetaFields.crossSection))
 
     # this is the basic description of our job
     xAH_logger.info("creating new job")

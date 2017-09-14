@@ -3,14 +3,16 @@ id/I:name/C:xsec/F:kfac/F:eff/F:relunc/F
 
 ################################################################################################################
 #  Graviton signal samples c=0.5
-
 301486   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c05_M500   0.22202  1.   1.0  1.
 301487   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c05_M1000   0.0085432  1.   1.0  1.
 
 
 ################################################################################################################
 #  Graviton signal samples c=1.0
-
+309038   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M260   0.272210 1. 1.0 1.
+309039   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M270   0.464770 1. 1.0 1.
+309040   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M280   0.728720 1. 1.0 1.
+309041   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M290   1.024000 1. 1.0 1.
 301488   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M300   1.3181  1.   1.0  1.
 301489   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M400   1.8986  1.   1.0  1.
 301490   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c10_M500   0.89149  1.   1.0  1.
@@ -39,7 +41,6 @@ id/I:name/C:xsec/F:kfac/F:eff/F:relunc/F
 
 ################################################################################################################
 #  Graviton signal samples c=2.0
-
 301508   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c20_M300   10.005  1.   1.0  1.
 301509   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c20_M400   8.5603  1.   1.0  1.
 301510   MadGraphPythia8EvtGen_A14NNPDF23LO_RS_G_hh_bbbb_c20_M500   3.7504  1.   1.0  1.
@@ -95,6 +96,9 @@ id/I:name/C:xsec/F:kfac/F:eff/F:relunc/F
 ################################################################################################################
 #  2HDM
 343394   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m260_4b   150.55  1.   1.0  1.
+309044   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m270_4b   190.000  1.   1.0  1.
+309045   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m280_4b   208.550  1.   1.0  1.
+309046   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m290_4b   217.400  1.   1.0  1.
 343395   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m300_4b   221.7  1.   1.0  1.
 343396   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m400_4b   229.6  1.   1.0  1.
 343397   MadGraphHerwigppEvtGen_UEEE5_CTEQ6L1_CT10ME_Xhh_m500_4b   99.0  1.   1.0  1.
@@ -129,7 +133,7 @@ id/I:name/C:xsec/F:kfac/F:eff/F:relunc/F
 ################################################################################################################
 #  ttbar Not covered in the susy file
 
-410007  PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_allhad   696.21  1.   0.45618  1.
+410007  PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_allhad        696.2100        1.      0.4561800       1.
 410037	PowhegPythiaEvtGen_P2012_ttbar_hdamp170_nonallhad	745.4900	1.	0.5436400	1.
 410038	PowhegPythiaEvtGen_P2012_ttbar_hdamp171p5_nonallhad	715.3700	1.	0.5436800	1.
 410039	PowhegPythiaEvtGen_P2012_ttbar_hdamp173p5_nonallhad	677.4300	1.	0.5437200	1.
