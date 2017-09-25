@@ -96,6 +96,9 @@ class BasicEventSelection : public xAH::Algorithm
     // Print Branch List
     bool m_printBranchList = false;
 
+    bool m_skimAOD=false;
+    bool m_runOverSkimAOD=false;
+
   // Trigger
     /**
       @rst

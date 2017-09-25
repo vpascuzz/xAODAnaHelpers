@@ -47,6 +47,7 @@ namespace xAH {
     int      m_mcEventNumber;
     int      m_mcChannelNumber;
     float    m_mcEventWeight;
+    bool     m_skimAOD = false;
     float    m_weight_pileup;
     float    m_weight_pileup_up;
     float    m_weight_pileup_down;

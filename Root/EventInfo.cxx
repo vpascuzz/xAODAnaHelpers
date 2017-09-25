@@ -271,17 +271,20 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo,  xAOD::TEvent* even
     m_averageMu = eventInfo->averageInteractionsPerCrossing();
 
     if ( m_mc ) {
-
-      static SG::AuxElement::ConstAccessor< float > weight_pileup ("PileupWeight");
-      static SG::AuxElement::ConstAccessor< float >  correct_mu("corrected_averageInteractionsPerCrossing");
-      static SG::AuxElement::ConstAccessor< unsigned int > rand_run_nr("RandomRunNumber");
-      static SG::AuxElement::ConstAccessor< unsigned int > rand_lumiblock_nr("RandomLumiBlockNumber");
+      std::string prefix = "";
+      static SG::AuxElement::ConstAccessor< bool > skimAOD ("skimAOD");
+      if ( skimAOD.isAvailable( *eventInfo ) ) { m_skimAOD = skimAOD (*eventInfo ); } else { m_skimAOD = false; }
+      if ( m_skimAOD ) prefix = "skim";
+      static SG::AuxElement::ConstAccessor< float > weight_pileup (prefix+"PileupWeight");
+      static SG::AuxElement::ConstAccessor< float >  correct_mu(prefix+"corrected_averageInteractionsPerCrossing");
+      static SG::AuxElement::ConstAccessor< unsigned int > rand_run_nr(prefix+"RandomRunNumber");
+      static SG::AuxElement::ConstAccessor< unsigned int > rand_lumiblock_nr(prefix+"RandomLumiBlockNumber");
 
       if ( weight_pileup.isAvailable( *eventInfo ) )	 { m_weight_pileup = weight_pileup( *eventInfo ); }	    else { m_weight_pileup = 1.0; }
       if ( correct_mu.isAvailable( *eventInfo ) )	 { m_correct_mu = correct_mu( *eventInfo ); }		    else { m_correct_mu = -1.0; }
       if ( rand_run_nr.isAvailable( *eventInfo ) )	 { m_rand_run_nr = rand_run_nr( *eventInfo ); } 	    else { m_rand_run_nr = 900000; }
       if ( rand_lumiblock_nr.isAvailable( *eventInfo ) ) { m_rand_lumiblock_nr = rand_lumiblock_nr( *eventInfo ); } else { m_rand_lumiblock_nr = 0; }
-
+      
       static SG::AuxElement::ConstAccessor< float > weight_pileup_up ("PileupWeight_UP");
       static SG::AuxElement::ConstAccessor< float > weight_pileup_down ("PileupWeight_DOWN");
       if ( weight_pileup_up.isAvailable( *eventInfo ) )  { m_weight_pileup_up = weight_pileup_up( *eventInfo );}    else { m_weight_pileup_up = 1.0; }

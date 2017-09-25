@@ -502,6 +502,8 @@ EL::StatusCode BasicEventSelection :: initialize ()
     ANA_CHECK( m_pileup_tool_handle.setProperty("DataScaleFactorUP", 1.0));
     ANA_CHECK( m_pileup_tool_handle.setProperty("DataScaleFactorDOWN", 1.0/1.18));
     ANA_CHECK( m_pileup_tool_handle.setProperty("OutputLevel", msg().level() ));
+    if (m_skimAOD) ANA_CHECK( m_pileup_tool_handle.setProperty("Prefix", "skim" ));
+    if (m_skimAOD) eventInfo->auxdecor< bool >( "skimAOD" )= true;
     ANA_CHECK( m_pileup_tool_handle.retrieve());
     ANA_MSG_DEBUG("Retrieved tool: " << m_pileup_tool_handle);
   }
@@ -829,6 +831,8 @@ EL::StatusCode BasicEventSelection :: execute ()
   m_cutflowHist ->Fill( m_cutflow_npv, 1 );
   m_cutflowHistW->Fill( m_cutflow_npv, mcEvtWeight);
 
+
+  if (m_runOverSkimAOD) return EL::StatusCode::SUCCESS;
   //---------------------
   // Trigger decision cut
   //---------------------
