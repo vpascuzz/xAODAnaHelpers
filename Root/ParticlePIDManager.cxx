@@ -67,7 +67,7 @@ StatusCode ElectronLHPIDManager :: setupWPs( bool configTools, std::string selec
       /* configure and initialise only tools with (WP >= selectedWP) */
       it.second->msg().setLevel( MSG::INFO); /* ERROR, VERBOSE, DEBUG, INFO */
 
-      ANA_CHECK( it.second->setProperty("WorkingPoint", WP+"LHElectron" ) );
+      ANA_CHECK( it.second->setProperty("WorkingPoint", WP+"LHElectron_Rel20p7" ) );
       ANA_CHECK( it.second->initialize());
 
       /* copy map element into container of valid WPs for later usage */
